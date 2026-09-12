@@ -19,6 +19,7 @@ import {
 } from '../economicModels/elasticity.js'
 import { ceilingOutcome, floorOutcome } from '../economicModels/priceControl.js'
 import { exchangeScene, inflationScene, interestScene } from '../economicModels/macro.js'
+import { LEVEL34_EXTRA_STATE, LEVEL34_LABS } from './level34Labs.js'
 
 export const DEFAULT_STATE = {
   price: 10000,
@@ -32,6 +33,7 @@ export const DEFAULT_STATE = {
   heat: 30,
   dollarHeat: 35,
   goodId: 'ramen',
+  ...LEVEL34_EXTRA_STATE,
 }
 
 export function chickenMarket(state) {
@@ -975,13 +977,14 @@ export const LABS = [
     title: '금리',
     blurb: '금리가 오르면 소비, 저축, 투자는 어떤 방향으로 움직일까요?',
     available: true,
+    nextLabId: 'money',
     conceptIds: ['interest'],
     principles: ['금리가 오르면 대출 부담이 커져 소비와 투자가 줄고, 저축의 매력은 커질 수 있습니다.'],
     steps: [
       {
         id: 'rate',
         question: '금리가 오르면\n어떤 일이 일어날까요?',
-        hint: '기준금리를 움직여 가계와 기업의 마음을 보세요.',
+        hint: '직접 움직여보세요. 기준금리를 올리면 대출·소비·투자가 바로 변합니다.',
         seed: { rate: 3.5 },
         controls: [
           {
@@ -1021,7 +1024,9 @@ export const LABS = [
                     '금리를 내리면 반대 방향으로 움직입니다.',
                     '실제 경제는 기대, 부동산, 환율도 함께 움직이지만, 가장 기본 줄기는 이것입니다.',
                   ],
-              termNote: '중앙은행이 정책금리를 조절해 경기에 영향을 주는 것을 통화정책이라고 합니다.',
+              termNote: up
+                ? '이 현상을 경제학에서는 통화정책의 긴축, 또는 금리 인상 효과라고 합니다. 중앙은행이 정책금리를 조절해 경기에 영향을 주는 것이 통화정책입니다.'
+                : '중앙은행이 정책금리를 조절해 경기에 영향을 주는 것을 통화정책이라고 합니다. 금리를 내리는 방향은 완화라고 부르기도 합니다.',
               principle: '금리 상승 → 대출 부담 증가 → 소비·투자 감소',
             }),
           }
@@ -1036,13 +1041,14 @@ export const LABS = [
     title: '인플레이션',
     blurb: '사람들이 한꺼번에 더 사려고 하면 물가는 왜 오를까요?',
     available: true,
+    nextLabId: 'gdp',
     conceptIds: ['inflation'],
     principles: ['많은 사람이 동시에 더 사려고 하면 물건 가격 수준이 오르고, 같은 돈의 가치는 줄어들 수 있습니다.'],
     steps: [
       {
         id: 'heat',
         question: '물가는 왜 상승할까요?',
-        hint: '“사려는 열기”를 키워 가격 수준이 어떻게 변하는지 보세요.',
+        hint: '직접 움직여보세요. 사려는 열기를 키우면 물가와 돈의 가치가 변합니다.',
         seed: { heat: 25 },
         controls: [
           {
@@ -1088,13 +1094,14 @@ export const LABS = [
     title: '환율',
     blurb: '달러를 사려는 사람이 많아지면 원/달러는 어떻게 될까요?',
     available: true,
+    nextLabId: 'trade',
     conceptIds: ['exchange'],
     principles: ['달러 수요가 늘면 원/달러 환율이 올라 수입과 여행은 비싸지고, 수출 가격 경쟁력은 커질 수 있습니다.'],
     steps: [
       {
         id: 'dollar',
-        question: '환율은 왜 변할까요?',
-        hint: '해외여행·수입 수요가 커질수록 달러가 더 필요해집니다.',
+        question: '달러를 사려는 사람이 많아지면\n원/달러는 어떻게 될까요?',
+        hint: '직접 움직여보세요. 달러 수요를 바꾸면 환율과 $100 상품의 원화 가격이 변합니다.',
         seed: { dollarHeat: 30 },
         controls: [
           {
@@ -1108,103 +1115,49 @@ export const LABS = [
         ],
         evaluate: (state) => {
           const scene = exchangeScene(state.dollarHeat)
+          const itemKrw = scene.fx * 100
           const hot = state.dollarHeat > 45
+          const cool = state.dollarHeat < 20
           return {
-            kind: 'bars',
-            bars: scene.bars,
+            kind: 'hero',
+            hero: {
+              label: '원/달러 환율',
+              value: `1달러 = ${Math.round(scene.fx).toLocaleString('ko-KR')}원`,
+              sub: `미국 상품 $100 → ${krw(itemKrw)}`,
+              tone: hot ? 'down' : cool ? 'up' : '',
+              wide: true,
+            },
+            bars: scene.bars.filter((bar) => bar.key !== 'fx'),
             stats: [
-              pill(hot ? '달러 수요가 늘어났습니다.' : '달러 수요를 키워 환율 변화를 보세요.', hot ? 'down' : 'neutral'),
-              pill(`원/달러 ${Math.round(scene.fx).toLocaleString('ko-KR')}원`, hot ? 'down' : 'neutral'),
-              pill(hot ? '수입과 해외여행이 비싸집니다.' : '수입 물가와 여행 비용을 함께 보세요.', hot ? 'down' : 'neutral'),
+              pill(hot ? '달러 수요가 늘어났습니다.' : cool ? '달러 수요가 줄었습니다.' : '달러 수요를 움직여 환율 변화를 보세요.', hot ? 'down' : cool ? 'up' : 'neutral'),
+              pill(hot ? `같은 $100를 사려면 ${krw(itemKrw)}가 필요합니다.` : `미국 상품 $100의 원화 가격은 ${krw(itemKrw)}입니다.`, hot ? 'down' : 'neutral'),
+              pill(hot ? '수입과 해외여행이 비싸집니다.' : cool ? '수입과 해외여행이 상대적으로 덜 부담됩니다.' : '수입 물가와 여행 비용을 함께 보세요.', hot ? 'down' : cool ? 'up' : 'neutral'),
             ],
             why: whyBlock({
-              headline: '달러가 많이 필요해지면 달러 값이 오릅니다',
-              chain: [
-                '해외여행이나 수입 물건을 사려면 달러가 필요합니다.',
-                '달러를 사려는 사람이 많아지면 외환시장에서 달러 수요가 증가합니다.',
-                '원으로 표시한 달러 가격, 즉 원/달러 환율이 상승합니다.',
-                '수입품과 해외여행은 비싸지고, 우리 수출품은 외국에서 상대적으로 싸 보일 수 있습니다.',
-              ],
+              headline: hot ? '달러가 많이 필요해지면 달러 값이 오릅니다' : '달러 수요가 환율을 움직입니다',
+              chain: hot
+                ? [
+                    '달러를 사려는 사람이 많아졌습니다.',
+                    '달러 가치가 상승합니다.',
+                    '원/달러 환율이 올라갑니다.',
+                    '같은 1달러를 사기 위해 더 많은 원화가 필요합니다.',
+                    `미국 상품 100달러는 지금 약 ${krw(itemKrw)}입니다.`,
+                  ]
+                : [
+                    '해외여행이나 수입 물건을 사려면 달러가 필요합니다.',
+                    '달러를 사려는 사람이 많아지면 외환시장에서 달러 수요가 증가합니다.',
+                    '원으로 표시한 달러 가격, 즉 원/달러 환율이 상승합니다.',
+                    '수입품과 해외여행은 비싸지고, 우리 수출품은 외국에서 상대적으로 싸 보일 수 있습니다.',
+                  ],
               termNote: '환율 상승은 “원화 가치 하락, 달러 가치 상승”과 같은 방향입니다.',
-              principle: '달러 수요 증가 → 환율 상승 → 수입 부담 증가',
+              principle: '달러 수요 증가 → 환율 상승 → 같은 달러를 사는 데 더 많은 원화 필요',
             }),
           }
         },
       },
     ],
   },
-  {
-    id: 'gdp',
-    level: 3,
-    emoji: '📊',
-    title: 'GDP',
-    blurb: '나라 전체가 1년 동안 만들어 낸 가치를 어떻게 읽을까요?',
-    available: false,
-  },
-  {
-    id: 'unemployment',
-    level: 3,
-    emoji: '💼',
-    title: '실업률',
-    blurb: '일을 찾고 있는데 일자리가 없으면 경제는 어떤 상태일까요?',
-    available: false,
-  },
-  {
-    id: 'money',
-    level: 3,
-    emoji: '💵',
-    title: '통화량',
-    blurb: '시중에 돈이 많아지면 물가와 금리는 어떻게 연결될까요?',
-    available: false,
-  },
-  {
-    id: 'cycle',
-    level: 3,
-    emoji: '🌊',
-    title: '경기변동',
-    blurb: '경제는 왜 늘 같은 속도로 달리지 않을까요?',
-    available: false,
-  },
-  {
-    id: 'trade',
-    level: 4,
-    emoji: '🚢',
-    title: '수출과 수입',
-    blurb: '나라 사이에서 물건이 오가면 가격과 후생은 어떻게 바뀔까요?',
-    available: false,
-  },
-  {
-    id: 'balance',
-    level: 4,
-    emoji: '🧾',
-    title: '무역수지',
-    blurb: '수출이 수입보다 많다는 말은 얼마나 많은 이야기일까요?',
-    available: false,
-  },
-  {
-    id: 'tariff',
-    level: 4,
-    emoji: '🧱',
-    title: '관세',
-    blurb: '수입품에 세금을 매기면 국내 가격과 거래량은 어떻게 될까요?',
-    available: false,
-  },
-  {
-    id: 'fta',
-    level: 4,
-    emoji: '🤝',
-    title: 'FTA',
-    blurb: '나라 사이 장벽이 낮아지면 누가 이득을 볼까요?',
-    available: false,
-  },
-  {
-    id: 'advantage',
-    level: 4,
-    emoji: '🧭',
-    title: '비교우위',
-    blurb: '더 잘 만드는 것보다, 덜 포기하고 만드는 것이 왜 중요할까요?',
-    available: false,
-  },
+  ...LEVEL34_LABS,
 ]
 
 function evaluateElasticity(state, goodId) {

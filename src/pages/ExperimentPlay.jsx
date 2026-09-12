@@ -1,9 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { BarsPanel, ElasticityPanel, MarketPanel } from '../components/LabVisuals.jsx'
+import {
+  BarsPanel,
+  ComparePanel,
+  CyclePanel,
+  ElasticityPanel,
+  HeroPanel,
+  MarketPanel,
+  PeoplePanel,
+  TradePanel,
+} from '../components/LabVisuals.jsx'
 import SliderControl from '../components/SliderControl.jsx'
 import WhySheet from '../components/WhySheet.jsx'
-import { DEFAULT_STATE, getLab } from '../data/labs.js'
+import { DEFAULT_STATE, LEVEL_META, getLab } from '../data/labs.js'
 import { markLabComplete, savePrinciple } from '../storage/progress.js'
 
 export default function ExperimentPlay() {
@@ -26,6 +35,7 @@ export default function ExperimentPlay() {
 
   const step = lab?.steps?.[stepIndex]
   const view = useMemo(() => (step ? step.evaluate(state) : null), [lab, step, state])
+  const levelMeta = LEVEL_META.find((item) => item.level === lab?.level)
 
   if (!lab) {
     return (
@@ -84,18 +94,29 @@ export default function ExperimentPlay() {
           <div key={item.id} className={`step-dot ${index <= stepIndex ? 'on' : ''}`} />
         ))}
       </div>
+      {lab.level >= 3 && levelMeta && (
+        <p className="eyebrow">
+          {levelMeta.code} {levelMeta.title}
+        </p>
+      )}
       <h1 className="question">{step.question}</h1>
       <p className="hint">{step.hint}</p>
 
       {view.kind === 'market' && <MarketPanel view={view} />}
       {view.kind === 'bars' && <BarsPanel view={view} />}
       {view.kind === 'elasticity' && <ElasticityPanel view={view} />}
+      {view.kind === 'hero' && <HeroPanel view={view} />}
+      {view.kind === 'people' && <PeoplePanel view={view} />}
+      {view.kind === 'cycle' && <CyclePanel view={view} />}
+      {view.kind === 'trade' && <TradePanel view={view} />}
+      {view.kind === 'compare' && <ComparePanel view={view} />}
 
       {step.controls.map((control) => (
         <SliderControl
           key={control.key}
           control={control}
           value={state[control.key]}
+          compact={step.controls.length > 3}
           onChange={(value) => setState((prev) => ({ ...prev, [control.key]: value }))}
         />
       ))}
@@ -107,6 +128,8 @@ export default function ExperimentPlay() {
           </div>
         ))}
       </div>
+
+      {view.footnote && <p className="footnote">{view.footnote}</p>}
 
       <div className="lab-actions">
         <button className="btn btn-secondary" type="button" onClick={() => setWhyOpen(true)}>
@@ -136,6 +159,8 @@ export default function ExperimentPlay() {
 }
 
 function Summary({ lab, saved, onSave, onReplay }) {
+  const next = lab.nextLabId ? getLab(lab.nextLabId) : null
+
   return (
     <section>
       <p className="eyebrow">실험 완료</p>
@@ -150,6 +175,11 @@ function Summary({ lab, saved, onSave, onReplay }) {
         <button className="btn btn-primary" type="button" onClick={onSave} disabled={saved}>
           {saved ? '저장했어요' : '이 원리 저장하기'}
         </button>
+        {next?.available && (
+          <Link to={`/experiments/${next.id}`} className="btn btn-primary">
+            이어서 {next.title} 실험하기
+          </Link>
+        )}
         <button className="btn btn-ghost" type="button" onClick={onReplay}>
           다시 실험하기
         </button>
