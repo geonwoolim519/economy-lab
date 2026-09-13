@@ -622,8 +622,11 @@ input[type='range']::-webkit-slider-thumb {
 }
 
 .record-item {
+  display: block;
   padding: 16px;
   margin-bottom: 10px;
+  overflow: hidden;
+  color: inherit;
 }
 
 .record-item h3 {
